@@ -5,12 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Para ti 🌹</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
+        /* ESTILOS GENERALES */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            font-family: 'Arial', sans-serif; 
+        }
         
+        /* INTERFAZ DE USUARIO */
         #ui-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100vh;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 10; pointer-events: none;
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100vh;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            z-index: 10; 
+            pointer-events: none; /* Permite clicks solo en botones */
             background: radial-gradient(circle, transparent 0%, #000 90%);
         }
 
@@ -21,28 +36,47 @@
             border-radius: 20px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            pointer-events: auto;
-            max-width: 90%;
+            pointer-events: auto; /* Reactiva los clicks */
             transition: opacity 0.5s ease;
         }
 
-        h1 { color: #ff69b4; font-size: 2.5rem; margin: 0 0 20px 0; text-shadow: 0 0 10px #ff1493; }
+        h1 { 
+            color: #ff69b4; 
+            font-size: 2.5rem; 
+            margin: 0 0 20px 0; 
+            text-shadow: 0 0 10px #ff1493; 
+        }
         
         button {
-            padding: 12px 30px; font-size: 1.2rem; border: none; border-radius: 50px;
-            margin: 10px; cursor: pointer; transition: transform 0.2s; font-weight: bold;
+            padding: 12px 30px; 
+            font-size: 1.2rem; 
+            border: none; 
+            border-radius: 50px;
+            margin: 10px; 
+            cursor: pointer; 
+            transition: transform 0.2s; 
+            font-weight: bold;
         }
 
-        #btnSi { background: #ff1493; color: white; box-shadow: 0 0 15px #ff1493; }
+        #btnSi { 
+            background: #ff1493; 
+            color: white; 
+            box-shadow: 0 0 15px #ff1493; 
+        }
+        
         #btnSi:hover { transform: scale(1.1); }
         #btnNo { background: white; color: black; }
 
         #loading {
-            position: fixed; bottom: 20px; right: 20px; color: white;
-            font-size: 0.8rem; opacity: 0.8; font-family: monospace;
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            color: white;
+            font-size: 1rem; 
+            font-family: monospace;
         }
 
-        .hidden { display: none !important; opacity: 0; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -55,81 +89,89 @@
         </div>
         
         <div id="mensaje" class="card hidden">
-            <h1 style="color: white;">¡Te quiero mucho! 💖</h1>
-            <p style="color: #ffb7c5;">Eres mi universo...</p>
+            <h1 style="color: white;">¡Lo sabía! 💖</h1>
+            <p style="color: #ffb7c5;">Todo esto es para ti...</p>
         </div>
     </div>
 
-    <div id="loading">Preparando sorpresa...</div>
+    <div id="loading">Cargando magia...</div>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
         import { GLTFLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
 
-        // Variables
-        let scene, camera, renderer, stars;
+        // --- CONFIGURACIÓN ---
+        let scene, camera, renderer, stars, bouquetGroup;
         let roses = [];
-        let clock = new THREE.Clock();
-        let bouquetGroup = new THREE.Group();
-        let modelLoaded = false;
         let roseModel = null;
+        let modelLoaded = false;
 
-        // Iniciar
         init();
         animate();
 
         function init() {
-            // Escena
+            // 1. Crear Escena
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.002);
-
-            // Cámara
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = 5;
 
-            // Renderizador
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
             renderer.outputEncoding = THREE.sRGBEncoding;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
             document.body.appendChild(renderer.domElement);
 
-            // Luces
+            // 2. Luces
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
-            
-            const spotLight = new THREE.SpotLight(0xff1493, 3);
-            spotLight.position.set(5, 10, 5);
+            const spotLight = new THREE.SpotLight(0xff1493, 2);
+            spotLight.position.set(5, 5, 5);
             scene.add(spotLight);
-            
-            const pointLight = new THREE.PointLight(0xffffff, 1);
-            pointLight.position.set(0, 2, 3);
-            scene.add(pointLight);
 
-            // Estrellas
+            // 3. Fondo de Estrellas
             createStars();
 
-            // Cargar Modelo
-            loadRoseModel();
+            // 4. Cargar la Rosa (rosa.glb)
+            const loader = new GLTFLoader();
+            loader.load(
+                './rosa.glb', 
+                (gltf) => {
+                    roseModel = gltf.scene;
+                    // Ajuste de escala (depende de tu modelo, 0.5 suele estar bien)
+                    roseModel.scale.set(0.5, 0.5, 0.5); 
+                    modelLoaded = true;
+                    document.getElementById('loading').innerText = "¡Listo!";
+                    setTimeout(() => document.getElementById('loading').style.display = 'none', 1000);
+                },
+                undefined,
+                (error) => {
+                    console.error(error);
+                    document.getElementById('loading').innerText = "⚠️ Error: No encuentro el archivo 'rosa.glb'";
+                    document.getElementById('loading').style.color = "red";
+                }
+            );
 
-            // Eventos
+            // 5. Eventos de botones
             document.getElementById('btnSi').addEventListener('click', startShow);
             
+            // Botón No que se escapa
             const btnNo = document.getElementById('btnNo');
             btnNo.addEventListener('mouseover', () => {
-                const x = (Math.random() - 0.5) * 300;
-                const y = (Math.random() - 0.5) * 300;
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
                 btnNo.style.transform = `translate(${x}px, ${y}px)`;
             });
 
-            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
         function createStars() {
             const geometry = new THREE.BufferGeometry();
             const vertices = [];
-            for (let i = 0; i < 3000; i++) {
+            for (let i = 0; i < 2000; i++) {
                 vertices.push((Math.random() - 0.5) * 100);
                 vertices.push((Math.random() - 0.5) * 100);
                 vertices.push((Math.random() - 0.5) * 100);
@@ -140,120 +182,68 @@
             scene.add(stars);
         }
 
-        function loadRoseModel() {
-            const loader = new GLTFLoader();
-            // Ruta relativa al archivo en tu repositorio
-            loader.load(
-                './rosa.glb', 
-                function (gltf) {
-                    roseModel = gltf.scene;
-                    roseModel.scale.set(0.5, 0.5, 0.5); // Ajustar escala base si es necesario
-                    
-                    // Asegurar que los materiales se vean bien
-                    roseModel.traverse((node) => {
-                        if (node.isMesh) {
-                            node.castShadow = true;
-                            node.receiveShadow = true;
-                        }
-                    });
-
-                    modelLoaded = true;
-                    document.getElementById('loading').innerText = "¡Listo!";
-                    setTimeout(() => document.getElementById('loading').style.display = 'none', 1000);
-                },
-                undefined,
-                function (error) {
-                    console.error(error);
-                    document.getElementById('loading').innerText = "Error: Verifica que el archivo se llame 'rosa.glb'";
-                    document.getElementById('loading').style.color = "red";
-                }
-            );
-        }
-
-        function createBouquet() {
-            if (!roseModel) return;
-
-            scene.add(bouquetGroup);
-
-            // Crear 60 rosas
-            for (let i = 0; i < 60; i++) {
-                const roseClone = roseModel.clone();
-                
-                // Matemáticas para esfera (Fibonacci sphere algorithm simplificado)
-                const phi = Math.acos(-1 + (2 * i) / 60);
-                const theta = Math.sqrt(60 * Math.PI) * phi;
-                const r = 2.0; 
-                
-                roseClone.position.setFromSphericalCoords(r, phi, theta);
-                roseClone.lookAt(0, 0, 0); 
-                
-                // Rotar para que los pétalos miren hacia afuera
-                roseClone.rotateX(Math.PI / 2); // Ajuste común para modelos GLB
-                roseClone.rotateZ(Math.random() * Math.PI); // Variedad
-                
-                roseClone.scale.set(0, 0, 0);
-                
-                roseClone.userData = {
-                    targetScale: 0.3 + Math.random() * 0.2, // Tamaño final
-                    delay: Math.random() * 2 // Retraso
-                };
-
-                bouquetGroup.add(roseClone);
-                roses.push(roseClone);
-            }
-        }
-
         function startShow() {
             if (!modelLoaded) {
-                alert("Las flores se están cargando... espera unos segundos.");
+                alert("Espera un segundo, las flores aún se están cargando...");
                 return;
             }
 
             document.getElementById('pregunta').classList.add('hidden');
             document.getElementById('mensaje').classList.remove('hidden');
 
-            createBouquet();
+            // Crear el ramo
+            bouquetGroup = new THREE.Group();
+            scene.add(bouquetGroup);
+
+            // Generar 50 rosas
+            for (let i = 0; i < 50; i++) {
+                const rose = roseModel.clone();
+                
+                // Matemáticas para hacer una esfera de flores
+                const phi = Math.acos(-1 + (2 * i) / 50);
+                const theta = Math.sqrt(50 * Math.PI) * phi;
+                const r = 2.5;
+
+                rose.position.setFromSphericalCoords(r, phi, theta);
+                rose.lookAt(0, 0, 0); // Mirar al centro
+                rose.rotateZ(Math.random() * Math.PI); // Rotación aleatoria
+                
+                rose.scale.set(0, 0, 0); // Empiezan invisibles
+                
+                // Guardar datos para animar
+                rose.userData = { targetScale: 0.4, delay: Math.random() * 2 };
+                
+                bouquetGroup.add(rose);
+                roses.push(rose);
+            }
 
             // Zoom de cámara
             let z = 5;
             const zoomInt = setInterval(() => {
                 z -= 0.02;
                 camera.position.z = z;
-                if (z <= 3.5) clearInterval(zoomInt);
+                if(z <= 3) clearInterval(zoomInt);
             }, 20);
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
 
-            if (stars) {
-                stars.rotation.y += 0.0005;
-            }
+            if (stars) stars.rotation.y += 0.0005;
 
             if (bouquetGroup) {
                 bouquetGroup.rotation.y += 0.002;
                 bouquetGroup.rotation.z += 0.001;
-                
+
                 roses.forEach(rose => {
                     if (rose.userData.delay > 0) {
-                        rose.userData.delay -= delta;
-                    } else {
-                        if (rose.scale.x < rose.userData.targetScale) {
-                            const speed = 0.01;
-                            rose.scale.addScalar(speed);
-                        }
+                        rose.userData.delay -= 0.016;
+                    } else if (rose.scale.x < rose.userData.targetScale) {
+                        rose.scale.addScalar(0.01);
                     }
                 });
             }
-
             renderer.render(scene, camera);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
         }
     </script>
 </body>
