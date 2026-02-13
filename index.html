@@ -1,234 +1,260 @@
-3D r            padding: 12px 35px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 50px;
-            margin: 10px; font-family: 'Poppins', sans-serif; font-weight: 600; transition: all 0.3s ease;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para ti 🌹</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
+        
+        #ui-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10; pointer-events: none;
+            background: radial-gradient(circle, transparent 0%, #000 90%);
         }
 
-        #btnSi {
-            background: linear-gradient(45deg, #d63384, #ff8fa3); color: white;
-            box-shadow: 0 0 15px rgba(214, 51, 132, 0.5);
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: auto;
+            max-width: 90%;
+            transition: opacity 0.5s ease;
         }
-        #btnSi:hover { transform: scale(1.1); box-shadow: 0 0 25px rgba(214, 51, 132, 0.8); }
 
-        #btnNo { background-color: white; color: #333; position: relative; }
+        h1 { color: #ff69b4; font-size: 2.5rem; margin: 0 0 20px 0; text-shadow: 0 0 10px #ff1493; }
+        
+        button {
+            padding: 12px 30px; font-size: 1.2rem; border: none; border-radius: 50px;
+            margin: 10px; cursor: pointer; transition: transform 0.2s; font-weight: bold;
+        }
 
-        .hidden { opacity: 0; pointer-events: none; transform: translateY(-20px); display: none; }
+        #btnSi { background: #ff1493; color: white; box-shadow: 0 0 15px #ff1493; }
+        #btnSi:hover { transform: scale(1.1); }
+        #btnNo { background: white; color: black; }
+
+        #loading {
+            position: fixed; bottom: 20px; right: 20px; color: white;
+            font-size: 0.8rem; opacity: 0.8; font-family: monospace;
+        }
+
+        .hidden { display: none !important; opacity: 0; }
     </style>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
-
     <div id="ui-container">
-        <div id="pregunta" class="contenido-ui">
-            <h1>¿Me quieres?</h1>
-            <p>Tengo una pregunta importante...</p>
-            <div>
-                <button id="btnSi">¡Sí, claro! ❤️</button>
-                <button id="btnNo">No</button>
-            </div>
+        <div id="pregunta" class="card">
+            <h1>¿Me quieres? 🌹</h1>
+            <button id="btnSi">¡Sí! ❤️</button>
+            <button id="btnNo">No</button>
         </div>
-
-        <div id="mensajeFinal" class="contenido-ui hidden">
-            <h2>¡Lo sabía! 💖</h2>
-            <p>El universo ha florecido para ti...</p>
+        
+        <div id="mensaje" class="card hidden">
+            <h1 style="color: white;">¡Te quiero mucho! 💖</h1>
+            <p style="color: #ffb7c5;">Eres mi universo...</p>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <div id="loading">Preparando sorpresa...</div>
 
-    <script>
-        // --- VARIABLES ---
-        let scene, camera, renderer, stars, bouquetGroup;
-        let flores = []; 
-        let animationId;
-        let bouquetRevealed = false;
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+        import { GLTFLoader } from 'https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
 
-        function init3D() {
+        // Variables
+        let scene, camera, renderer, stars;
+        let roses = [];
+        let clock = new THREE.Clock();
+        let bouquetGroup = new THREE.Group();
+        let modelLoaded = false;
+        let roseModel = null;
+
+        // Iniciar
+        init();
+        animate();
+
+        function init() {
+            // Escena
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x050505, 0.002); 
+            scene.fog = new THREE.FogExp2(0x000000, 0.002);
 
+            // Cámara
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = 5;
 
+            // Renderizador
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.body.appendChild(renderer.domElement);
 
-            // ILUMINACIÓN MEJORADA (Para que las flores brillen)
-            const ambientLight = new THREE.AmbientLight(0x222222, 2); 
+            // Luces
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
             
-            // Luz frontal
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(5, 5, 5);
-            scene.add(dirLight);
+            const spotLight = new THREE.SpotLight(0xff1493, 3);
+            spotLight.position.set(5, 10, 5);
+            scene.add(spotLight);
             
-            // Luz rosa trasera para efecto dramático
-            const pointLight = new THREE.PointLight(0xff1493, 2, 50);
-            pointLight.position.set(0, 0, 0);
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            pointLight.position.set(0, 2, 3);
             scene.add(pointLight);
 
-            createGalaxyParticles();
-            createHiddenBouquet();
-            animate();
+            // Estrellas
+            createStars();
+
+            // Cargar Modelo
+            loadRoseModel();
+
+            // Eventos
+            document.getElementById('btnSi').addEventListener('click', startShow);
+            
+            const btnNo = document.getElementById('btnNo');
+            btnNo.addEventListener('mouseover', () => {
+                const x = (Math.random() - 0.5) * 300;
+                const y = (Math.random() - 0.5) * 300;
+                btnNo.style.transform = `translate(${x}px, ${y}px)`;
+            });
+
+            window.addEventListener('resize', onWindowResize);
         }
 
-        function createGalaxyParticles() {
-            const particlesGeometry = new THREE.BufferGeometry();
-            const particlesCount = 3000; 
-            const posArray = new Float32Array(particlesCount * 3);
-
-            for(let i = 0; i < particlesCount * 3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 80; // Esparcidas
+        function createStars() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            for (let i = 0; i < 3000; i++) {
+                vertices.push((Math.random() - 0.5) * 100);
+                vertices.push((Math.random() - 0.5) * 100);
+                vertices.push((Math.random() - 0.5) * 100);
             }
-
-            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const particlesMaterial = new THREE.PointsMaterial({
-                size: 0.08, color: 0xffffff, transparent: true, opacity: 0.9
-            });
-            stars = new THREE.Points(particlesGeometry, particlesMaterial);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            const material = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true });
+            stars = new THREE.Points(geometry, material);
             scene.add(stars);
         }
 
-        function createHiddenBouquet() {
-            bouquetGroup = new THREE.Group();
+        function loadRoseModel() {
+            const loader = new GLTFLoader();
+            // Ruta relativa al archivo en tu repositorio
+            loader.load(
+                './rosa.glb', 
+                function (gltf) {
+                    roseModel = gltf.scene;
+                    roseModel.scale.set(0.5, 0.5, 0.5); // Ajustar escala base si es necesario
+                    
+                    // Asegurar que los materiales se vean bien
+                    roseModel.traverse((node) => {
+                        if (node.isMesh) {
+                            node.castShadow = true;
+                            node.receiveShadow = true;
+                        }
+                    });
+
+                    modelLoaded = true;
+                    document.getElementById('loading').innerText = "¡Listo!";
+                    setTimeout(() => document.getElementById('loading').style.display = 'none', 1000);
+                },
+                undefined,
+                function (error) {
+                    console.error(error);
+                    document.getElementById('loading').innerText = "Error: Verifica que el archivo se llame 'rosa.glb'";
+                    document.getElementById('loading').style.color = "red";
+                }
+            );
+        }
+
+        function createBouquet() {
+            if (!roseModel) return;
+
             scene.add(bouquetGroup);
 
-            // Colores de rosa (Rojo intenso, rosa pastel, fucsia)
-            const colors = [0xc90016, 0xff0055, 0xff69b4, 0xff1493, 0xdb7093];
-            const totalFlores = 120; // Un poco menos de cantidad para mejor rendimiento, pero más bonitas
-
-            // GEOMETRÍA DE ROSA (TorusKnot con parámetros específicos parece pétalos)
-            // Radius, Tube, TubularSegments, RadialSegments, p, q
-            const geometryRose = new THREE.TorusKnotGeometry(0.15, 0.06, 120, 16, 3, 5); 
-
-            for (let i = 0; i < totalFlores; i++) {
-                const material = new THREE.MeshStandardMaterial({
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    roughness: 0.3, // Un poco brillante como seda
-                    metalness: 0.1,
-                    emissive: 0x220000, // Un ligero brillo interno rojo
-                });
-
-                const flor = new THREE.Mesh(geometryRose, material);
-
-                // Distribución esférica
-                const phi = Math.acos(-1 + (2 * i) / totalFlores);
-                const theta = Math.sqrt(totalFlores * Math.PI) * phi;
-                const radio = 1.8 + Math.random() * 0.8;
-
-                flor.position.setFromSphericalCoords(radio, phi, theta);
+            // Crear 60 rosas
+            for (let i = 0; i < 60; i++) {
+                const roseClone = roseModel.clone();
                 
-                // Rotación inicial aleatoria
-                flor.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-
-                // Guardar velocidad de rotación única para cada flor (para que giren bonito)
-                flor.userData = {
-                    rotSpeedX: (Math.random() - 0.5) * 0.02,
-                    rotSpeedY: (Math.random() - 0.5) * 0.02
+                // Matemáticas para esfera (Fibonacci sphere algorithm simplificado)
+                const phi = Math.acos(-1 + (2 * i) / 60);
+                const theta = Math.sqrt(60 * Math.PI) * phi;
+                const r = 2.0; 
+                
+                roseClone.position.setFromSphericalCoords(r, phi, theta);
+                roseClone.lookAt(0, 0, 0); 
+                
+                // Rotar para que los pétalos miren hacia afuera
+                roseClone.rotateX(Math.PI / 2); // Ajuste común para modelos GLB
+                roseClone.rotateZ(Math.random() * Math.PI); // Variedad
+                
+                roseClone.scale.set(0, 0, 0);
+                
+                roseClone.userData = {
+                    targetScale: 0.3 + Math.random() * 0.2, // Tamaño final
+                    delay: Math.random() * 2 // Retraso
                 };
 
-                flor.scale.set(0, 0, 0); // Empiezan invisibles
-                bouquetGroup.add(flor);
-                flores.push(flor);
+                bouquetGroup.add(roseClone);
+                roses.push(roseClone);
             }
+        }
+
+        function startShow() {
+            if (!modelLoaded) {
+                alert("Las flores se están cargando... espera unos segundos.");
+                return;
+            }
+
+            document.getElementById('pregunta').classList.add('hidden');
+            document.getElementById('mensaje').classList.remove('hidden');
+
+            createBouquet();
+
+            // Zoom de cámara
+            let z = 5;
+            const zoomInt = setInterval(() => {
+                z -= 0.02;
+                camera.position.z = z;
+                if (z <= 3.5) clearInterval(zoomInt);
+            }, 20);
         }
 
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
 
-            // Movimiento fondo
-            if(stars) {
-                stars.rotation.y += 0.0003;
-                stars.rotation.x += 0.0001;
+            if (stars) {
+                stars.rotation.y += 0.0005;
             }
 
-            // Movimiento del ramo entero
-            if (bouquetRevealed && bouquetGroup) {
-                bouquetGroup.rotation.y += 0.003;
+            if (bouquetGroup) {
+                bouquetGroup.rotation.y += 0.002;
                 bouquetGroup.rotation.z += 0.001;
-
-                // Animación individual de cada flor (girar sobre sí misma)
-                flores.forEach(flor => {
-                    flor.rotation.x += flor.userData.rotSpeedX;
-                    flor.rotation.y += flor.userData.rotSpeedY;
+                
+                roses.forEach(rose => {
+                    if (rose.userData.delay > 0) {
+                        rose.userData.delay -= delta;
+                    } else {
+                        if (rose.scale.x < rose.userData.targetScale) {
+                            const speed = 0.01;
+                            rose.scale.addScalar(speed);
+                        }
+                    }
                 });
             }
-            
+
             renderer.render(scene, camera);
         }
 
-        function revelarFlorAFlor() {
-            bouquetRevealed = true;
-            let contador = 0;
-            
-            // Acercar cámara suavemente
-            const targetZ = 3.8;
-            const cameraAnim = setInterval(() => {
-                if(camera.position.z > targetZ) camera.position.z -= 0.01;
-                else clearInterval(cameraAnim);
-            }, 20);
-
-            const intervalo = setInterval(() => {
-                if (contador >= flores.length) {
-                    clearInterval(intervalo);
-                    return;
-                }
-                const flor = flores[contador];
-                
-                // Efecto de "pop" al aparecer
-                let escala = 0;
-                const crecer = setInterval(() => {
-                    escala += 0.05;
-                    if (escala >= 1) {
-                        flor.scale.set(1, 1, 1);
-                        clearInterval(crecer);
-                    } else {
-                        flor.scale.set(escala, escala, escala);
-                    }
-                }, 16);
-
-                contador++;
-            }, 30); // Velocidad de aparición entre flores
-        }
-
-        // --- EVENTOS ---
-        document.getElementById('btnSi').addEventListener('click', () => {
-            const uiPregunta = document.getElementById('pregunta');
-            const uiMensaje = document.getElementById('mensajeFinal');
-            
-            uiPregunta.style.opacity = '0';
-            
-            setTimeout(() => {
-                uiPregunta.style.display = 'none'; // Quitar del flujo
-                uiMensaje.classList.remove('hidden');
-                uiMensaje.style.display = 'block'; // Asegurar display
-                setTimeout(() => uiMensaje.style.opacity = '1', 50);
-                
-                revelarFlorAFlor();
-            }, 600);
-        });
-
-        const btnNo = document.getElementById('btnNo');
-        btnNo.addEventListener('mouseover', () => {
-            const container = document.getElementById('ui-container').getBoundingClientRect();
-            const btn = btnNo.getBoundingClientRect();
-            const newX = (Math.random() - 0.5) * (container.width - btn.width * 2);
-            const newY = (Math.random() - 0.5) * (container.height - btn.height * 2);
-            btnNo.style.transform = `translate(${newX}px, ${newY}px)`;
-        });
-
-        window.addEventListener('resize', () => {
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        init3D();
+        }
     </script>
 </body>
 </html>
-</body>
-</html>
-
-
