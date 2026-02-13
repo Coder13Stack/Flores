@@ -22,7 +22,7 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.2);
             pointer-events: auto;
-            transition: all 0.5s ease;
+            transition: opacity 0.8s ease;
         }
 
         h1 { color: #ff69b4; font-size: 2.5rem; margin: 0 0 20px 0; text-shadow: 0 0 10px #ff1493; }
@@ -33,33 +33,33 @@
         }
 
         #btnSi { background: #ff1493; color: white; box-shadow: 0 0 15px #ff1493; }
-        #btnSi:active { transform: scale(0.9); }
+        #btnSi:active { transform: scale(0.95); }
         #btnNo { background: white; color: black; }
 
         #loading {
-            position: fixed; bottom: 20px; right: 20px; color: white;
-            font-size: 0.8rem; opacity: 0.8; font-family: monospace;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 100%;
+            background: black; color: white; display: flex; justify-content: center; align-items: center;
+            z-index: 20; font-family: monospace; font-size: 1.2rem;
+            transition: opacity 0.5s;
         }
 
-        .hidden { display: none !important; opacity: 0; }
+        .hidden { opacity: 0 !important; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <div id="loading">Preparando cada pétalo... (0%)</div>
+
     <div id="ui-container">
-        <div id="pregunta" class="card">
-            <h1>¿Me quieres? 🌹</h1>
+        <div id="pregunta" class="card hidden"> <h1>¿Me quieres? 🌹</h1>
             <button id="btnSi">¡Sí! ❤️</button>
             <button id="btnNo">No</button>
         </div>
         
         <div id="mensaje" class="card hidden">
             <h1 style="color: white;">¡Lo sabía! 💖</h1>
-            <p style="color: #ffb7c5;">Mira esto...</p>
         </div>
     </div>
-
-    <div id="loading">Preparando flores...</div>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
@@ -67,8 +67,7 @@
 
         let scene, camera, renderer, stars, bouquetGroup;
         let roses = [];
-        let roseModel = null;
-        let modelLoaded = false;
+        let animationStarted = false;
 
         init();
         animate();
@@ -80,32 +79,28 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.outputEncoding = THREE.sRGBEncoding; 
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            // Luces
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
-            const spotLight = new THREE.SpotLight(0xff1493, 2);
-            spotLight.position.set(5, 5, 5);
-            scene.add(spotLight);
+            const dirLight = new THREE.DirectionalLight(0xff1493, 1.5);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
 
             createStars();
+            
+            // CARGA EL MODELO Y CREA EL RAMO *ANTES* DE MOSTRAR NADA
+            loadAndBuildBouquet();
 
-            const loader = new GLTFLoader();
-            loader.load('./rosa.glb', (gltf) => {
-                roseModel = gltf.scene;
-                roseModel.scale.set(0.5, 0.5, 0.5); 
-                modelLoaded = true;
-                document.getElementById('loading').innerText = "¡Listo!";
-                setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
-            });
-
+            // Eventos
             document.getElementById('btnSi').addEventListener('click', startShow);
             
             const btnNo = document.getElementById('btnNo');
             btnNo.addEventListener('mouseover', () => {
-                const x = (Math.random() - 0.5) * 200;
-                const y = (Math.random() - 0.5) * 200;
+                const x = (Math.random() - 0.5) * 250;
+                const y = (Math.random() - 0.5) * 250;
                 btnNo.style.transform = `translate(${x}px, ${y}px)`;
             });
 
@@ -126,67 +121,28 @@
             scene.add(stars);
         }
 
-        function startShow() {
-            if (!modelLoaded) {
-                alert("Las flores se están cargando... un segundo.");
-                return;
-            }
-
-            // 1. Cambio de interfaz INMEDIATO
-            document.getElementById('pregunta').classList.add('hidden');
-            document.getElementById('mensaje').classList.remove('hidden');
-
-            // 2. Crear flores con un pequeño retraso para que la UI no se trabe
-            setTimeout(() => {
-                bouquetGroup = new THREE.Group();
-                scene.add(bouquetGroup);
-
-                // Bajamos un poco la cantidad (45) para que cargue más rápido
-                for (let i = 0; i < 45; i++) {
-                    const rose = roseModel.clone();
-                    const phi = Math.acos(-1 + (2 * i) / 45);
-                    const theta = Math.sqrt(45 * Math.PI) * phi;
-                    rose.position.setFromSphericalCoords(2.2, phi, theta);
-                    rose.lookAt(0, 0, 0); 
-                    rose.rotateZ(Math.random() * Math.PI);
-                    rose.scale.set(0, 0, 0);
+        function loadAndBuildBouquet() {
+            const loader = new GLTFLoader();
+            loader.load(
+                './rosa.glb', 
+                (gltf) => {
+                    const roseModel = gltf.scene;
+                    roseModel.scale.set(0.5, 0.5, 0.5); 
                     
-                    // VELOCIDAD MEJORADA: Menos delay, más rápido
-                    rose.userData = { 
-                        targetScale: 0.4, 
-                        delay: Math.random() * 0.5 // Máximo 0.5s de espera (antes era 2s)
-                    };
-                    
-                    bouquetGroup.add(rose);
-                    roses.push(rose);
-                }
-            }, 50); // 50ms de respiro para el navegador
+                    // CREAMOS EL RAMO AHORA MISMO (INVISIBLE)
+                    bouquetGroup = new THREE.Group();
+                    scene.add(bouquetGroup);
 
-            // Zoom rápido
-            let z = 5;
-            const zoomInt = setInterval(() => {
-                z -= 0.03; // Zoom más agresivo
-                camera.position.z = z;
-                if(z <= 3) clearInterval(zoomInt);
-            }, 16);
-        }
+                    // Reduje a 30 rosas para asegurar rendimiento máximo
+                    // Si tienes un celular potente, puedes subir a 50
+                    const count = 35; 
 
-        function animate() {
-            requestAnimationFrame(animate);
-            if (stars) stars.rotation.y += 0.0005;
-            if (bouquetGroup) {
-                bouquetGroup.rotation.y += 0.004; // Giro más rápido
-                bouquetGroup.rotation.z += 0.001;
-                roses.forEach(rose => {
-                    if (rose.userData.delay > 0) {
-                        rose.userData.delay -= 0.02;
-                    } else if (rose.scale.x < rose.userData.targetScale) {
-                        rose.scale.addScalar(0.04); // Crecimiento EXPLOSIVO (4x más rápido)
-                    }
-                });
-            }
-            renderer.render(scene, camera);
-        }
-    </script>
-</body>
-</html>
+                    for (let i = 0; i < count; i++) {
+                        const rose = roseModel.clone();
+                        
+                        // Posición esférica
+                        const phi = Math.acos(-1 + (2 * i) / count);
+                        const theta = Math.sqrt(count * Math.PI) * phi;
+                        rose.position.setFromSphericalCoords(2.2, phi, theta);
+                        rose.lookAt(0, 0, 0); 
+                        rose.rotateZ(
