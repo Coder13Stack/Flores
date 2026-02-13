@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para ti ❤️</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #ffeef0;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        #pregunta {
+            transition: opacity 0.5s;
+        }
+
+        button {
+            padding: 10px 25px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 20px;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+
+        #btnSi { background-color: #ff4d6d; color: white; }
+        #btnNo { background-color: #ddd; }
+
+        /* Estilo simple para las flores */
+        .flower {
+            position: absolute;
+            bottom: -100px;
+            font-size: 50px;
+            animation: grow 3s forwards ease-out;
+        }
+
+        @keyframes grow {
+            to { transform: translateY(-50vh) rotate(360deg); }
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="contenedor">
+        <div id="pregunta">
+            <h1>¿Me quieres? 🌹</h1>
+            <button id="btnSi" onclick="mostrarFlores()">Sí</button>
+            <button id="btnNo" onmouseover="moverBoton(this)">No</button>
+        </div>
+        
+        <div id="mensajeFinal" class="hidden">
+            <h1 style="color: #ff4d6d;">¡Sabía que dirías que sí! 💐</h1>
+            <div id="jardin"></div>
+        </div>
+    </div>
+
+    <script>
+        function mostrarFlores() {
+            document.getElementById('pregunta').classList.add('hidden');
+            document.getElementById('mensajeFinal').classList.remove('hidden');
+            
+            const jardin = document.getElementById('jardin');
+            const emojis = ['🌹', '🌷', '🌸', '🌺', '🌻', '🌼'];
+            
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const flor = document.createElement('div');
+                    flor.className = 'flower';
+                    flor.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                    flor.style.left = Math.random() * 100 + "vw";
+                    flor.style.animationDuration = (Math.random() * 2 + 2) + "s";
+                    jardin.appendChild(flor);
+                }, i * 100);
+            }
+        }
+
+        function moverBoton(btn) {
+            btn.style.position = 'absolute';
+            btn.style.top = Math.random() * 80 + 'vh';
+            btn.style.left = Math.random() * 80 + 'vw';
+        }
+    </script>
+</body>
+</html>
